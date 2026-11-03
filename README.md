@@ -4,6 +4,23 @@ Developer and QA documentation for **Risips**, a goal-based mutual fund investin
 Private Limited). The code lives in `akashatbest/risips` (branch `dev`): the backend in `backend-ts/`, the app in
 `mobile/`.
 
+## API testing guide for QA (`api-testing/`)
+
+Start with [api-testing/README.md](api-testing/README.md): how to log in with Postman, which API to call in which
+order, what each response and error means, test data, and a checklist to retest the reported bugs. Every request in
+it was run on the sandbox.
+
+| Doc | Covers |
+|---|---|
+| [01-login-and-account.md](api-testing/01-login-and-account.md) | Email and mobile OTP, PIN, sessions |
+| [02-onboarding-kyc-compliant.md](api-testing/02-onboarding-kyc-compliant.md) | Onboarding for a PAN that already has KYC |
+| [03-onboarding-fresh-kyc.md](api-testing/03-onboarding-fresh-kyc.md) | Onboarding with fresh KYC (no KRA record) |
+| [04-funds.md](api-testing/04-funds.md) | Fund list, filters, fund page, compare, watchlist |
+| [05-orders-and-payments.md](api-testing/05-orders-and-payments.md) | Lumpsum, redeem, switch, cart, payment |
+| [06-sip-stp-swp.md](api-testing/06-sip-stp-swp.md) | AutoPay, SIP, STP, SWP |
+| [07-reports-settings-other.md](api-testing/07-reports-settings-other.md) | Reports, notifications, settings, MF Central import, assistant |
+| [08-bug-retest-checklist.md](api-testing/08-bug-retest-checklist.md) | Retest steps for every RSP bug |
+
 ## Backend (`backend-ts/`)
 
 | Doc | What's in it |

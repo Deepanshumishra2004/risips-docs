@@ -572,7 +572,7 @@ The last four digits of the account number set the result:
 | Last 4 digits | FP result | Expected API behaviour |
 |---|---|---|
 | `11XX` | very high confidence | verified |
-| `12XX` | high confidence | verified |
+| `12XX` | high confidence | not verified on 2026-11-03: stays pending, 422 "taking longer than usual". Use `11XX` |
 | `13XX` | uncertain | 422 "We could not confirm this account belongs to you. …" |
 | `14XX`, `15XX`, `1600` | low / very low / zero confidence | 422 (refused) |
 | `31XX` | failed | 422 "Bank verification failed. …" |

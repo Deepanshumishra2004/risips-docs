@@ -93,7 +93,7 @@ the result:
 | Last 4 digits | Result |
 |---|---|
 | `11XX` | Verified (very high confidence). The in-app hint suggests `1191` to `1199`, for example `50100123451195` |
-| `12XX` | High confidence |
+| `12XX` | High confidence at FP, but on 2026-11-03 it stayed pending ("taking longer than usual"). Use `11XX` |
 | `13XX` / `14XX` / `15XX` | Uncertain / low / very low confidence: may be refused ("We could not confirm this account belongs to you") |
 | `1600` | Zero confidence |
 | `31XX` | Fails: "Bank verification failed. Please check the account number and IFSC." |
