@@ -241,7 +241,7 @@ A validation error lists every bad field under `fields`. `error` holds the first
 | `200` | Success |
 | `400` | The request is wrong: a bad field, a rule that is not met, or a wrong code. Read `error` |
 | `401` | `"Please sign in again."`: the token is missing, wrong or ended. Also used for `pin_locked` |
-| `403` | The account cannot invest yet: onboarding is not finished, or a fresh KYC is waiting for KRA approval |
+| `403` | The account cannot invest yet: onboarding is not finished, a fresh KYC is waiting for KRA approval, or the monthly KRA re-check found the KYC on hold (new purchases only; redemptions still work) |
 | `404` | The endpoint, fund, order or plan does not exist, or belongs to another user. A malformed id in the URL also returns `404` with `reason: "validation"` |
 | `409` | The action does not fit the current state, for example "Your account is already set up." |
 | `413` | `"The request is too large."` (an image over the size limit) |
@@ -477,6 +477,7 @@ Every onboarding response returns `user.next_step`. Use this table to pick the n
 | `income` | `POST /onb/profile` with `income_slab` |
 | `marital` | `POST /onb/profile` with `marital_status` |
 | `father` | `POST /onb/profile` with `father_name` |
+| `pep` | `POST /onb/profile` with `pep` (`none`, `exposed` or `related`; PMLA politically exposed person) |
 | `address` | `POST /onb/address` (optional lookup: `GET /onb/pincode/{pin}`) |
 | `aadhaar` | Fresh KYC only: `POST /onb/kyc/start`, DigiLocker, `POST /onb/kyc/refresh` |
 | `bank` | `POST /onb/bank` (optional lookup: `GET /onb/ifsc/{ifsc}`) |
@@ -486,7 +487,7 @@ Every onboarding response returns `user.next_step`. Use this table to pick the n
 | `esign` | `POST /onb/esign` |
 | `home` | Onboarding is complete. The account can invest |
 
-For a PAN with existing KYC the order is: `pan`, `pan-confirm`, `occupation`, `income`, `marital`, `father`,
+For a PAN with existing KYC the order is: `pan`, `pan-confirm`, `occupation`, `income`, `marital`, `father`, `pep`,
 `address`, `bank`, `signature-consent`, `nominee`, `esign`, `home`.
 
 **Step 1. PAN, name and date of birth**
@@ -538,7 +539,7 @@ Send one field per call (as the app does) or all at once.
 POST /onb/profile
 
 { "occupation": "private_sector_service", "income_slab": "above_5lakh_upto_10lakh",
-  "marital_status": "single", "father_name": "Ramesh Kumar" }
+  "marital_status": "single", "father_name": "Ramesh Kumar", "pep": "none" }
 ```
 
 Returns `{ "user": { "next_step": "address", ... } }`. Allowed values are in
@@ -677,7 +678,7 @@ the KRA for approval. There is no selfie step.
 |---|---|---|---|
 | 1 | `pan` | `POST /onb/pan` with `"fresh_kyc": true` | No |
 | 2 | `pan-confirm` | `POST /onb/pan/confirm` | No |
-| 3 | `occupation` to `father` | `POST /onb/profile` | No |
+| 3 | `occupation` to `pep` | `POST /onb/profile` | No |
 | 4 | `address` | `POST /onb/address` | No |
 | 5 | `aadhaar` | `POST /onb/kyc/start`, then open `fetch_url` | **Yes**: DigiLocker |
 | 6 | `aadhaar` | `POST /onb/kyc/refresh` | No |

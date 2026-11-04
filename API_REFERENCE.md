@@ -86,6 +86,7 @@ Returned as `user` by authentication and onboarding endpoints and by `GET /me`.
 | `income_slab` | string \| null | See [POST /onb/profile](#post-onbprofile) |
 | `marital_status` | string \| null | See [POST /onb/profile](#post-onbprofile) |
 | `father_name` | string \| null | Father's or spouse's name |
+| `pep` | string \| null | Politically exposed person (PMLA): `none`, `exposed` or `related`; null until answered |
 | `address` | object \| null | `{ line1, line2, pincode, city, state }` |
 | `bank` | object \| null | `{ ifsc, bank_name, branch, city, pv_id, status, code, verified, account_masked }`. The full account number is never returned |
 | `nominee` | object \| null | `{ name, dob, relationship, pan }`. `pan` is masked |
@@ -94,6 +95,7 @@ Returned as `user` by authentication and onboarding endpoints and by `GET /me`.
 | `kyc_compliant` | boolean | The PAN has a good KYC record at the KRA |
 | `kyc_fresh` | boolean | The investor is doing a fresh KYC |
 | `kyc_status` | string \| null | See the table below |
+| `kra_hold` | boolean | The monthly KRA re-check found the PAN not compliant: new purchases are paused, redemptions go on |
 | `selfie_url`, `signature_url` | string \| null | Relative signed image links, valid 1-2 hours |
 | `biometric` | boolean | Biometric unlock is on |
 | `pin_set` | boolean | A PIN is set |
@@ -122,6 +124,7 @@ Returned as `user` by authentication and onboarding endpoints and by `GET /me`.
 | `pan` | PAN verified | [POST /onb/pan](#post-onbpan) |
 | `pan-confirm` | PAN confirmed | [POST /onb/pan/confirm](#post-onbpanconfirm) |
 | `occupation`, `income`, `marital`, `father` | Profile answer saved | [POST /onb/profile](#post-onbprofile) |
+| `pep` | Politically exposed person answered (PMLA) | [POST /onb/profile](#post-onbprofile) |
 | `address` | Address and gender saved | [POST /onb/address](#post-onbaddress) |
 | `aadhaar` | Fresh KYC only: Aadhaar fetched from DigiLocker | [POST /onb/kyc/start](#post-onbkycstart), [POST /onb/kyc/refresh](#post-onbkycrefresh) |
 | `bank` | Bank account verified | [POST /onb/bank](#post-onbbank) |
@@ -812,6 +815,7 @@ Saves profile answers. Send any subset of fields.
 | `marital_status` | string | No | `single`, `married`, `others` |
 | `father_name` | string | No | 3-70 characters: letters, spaces, `.` and `'` |
 | `gender` | string | No | `male`, `female`, `transgender` |
+| `pep` | string | No | Politically exposed person (PMLA): `none`, `exposed` (the investor is one) or `related` (related to one). Error: "Please tell us whether you are a politically exposed person." |
 
 **Example request**
 
@@ -1717,12 +1721,14 @@ Stops the checkout. Lines still `queued` become `skipped` and stay in the cart.
 
 ### Who can invest
 
-Every order, SIP, STP, SWP, AutoPay and cart write checks that the account can invest:
+Every order, SIP, STP, SWP, AutoPay and cart write checks that the account can invest. Redemptions and SWPs skip the
+KRA-hold check (it is the investor's own money):
 
 | Status | `error` | When |
 |---|---|---|
 | 403 | "Please complete your KYC to invest." | Onboarding is not finished |
 | 403 | "Your KYC is with the KRA for approval (usually 1–3 working days). You can invest once it is approved." (with `kyc_status`) | A fresh KYC is waiting for the KRA |
+| 403 | "Your KYC is on hold at the KRA. New investments are paused until it is fixed; you can still redeem. Please contact support to update your KYC." (the first sentence follows the KRA code; with `kyc_status: "on_hold"`) | The monthly KRA re-check found the PAN not compliant (`user.kra_hold`) |
 
 ### POST /invest/lumpsum
 
