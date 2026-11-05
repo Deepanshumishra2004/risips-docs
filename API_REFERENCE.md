@@ -1348,7 +1348,7 @@ Returns one fund's full page and its NAV chart.
 | Parameter | In | Required | Rules |
 |---|---|---|---|
 | `isin` | path | Yes | Fund ISIN |
-| `period` | query | No | Chart range: `1M`, `6M`, `1Y` (default), `3Y`, `5Y`. Any other value uses `1Y` |
+| `period` | query | No | Chart range: `1M`, `6M`, `1Y` (default), `3Y`, `5Y`, or `all` (the whole chart once, see below). Any other value uses `1Y` |
 
 **Example request**
 
@@ -1387,6 +1387,9 @@ GET /funds/INF109KC1Q80?period=3Y
   point for every trading day (about 22, 125 and 250); 3Y and 5Y have about one a week (about 156 and 260). The
   history comes from AMFI's NAVs (via mfapi.in) and is refreshed every 6 hours. If it can't be reached, the chart falls
   back to the weekly points saved in the catalogue.
+- `period=all` returns 5 years in one chart: every trading day of the last year and one point a week before it (about
+  500 points). `period_return` is `null`; each period's figure is in `fund.returns`. The app asks for `all` once and
+  cuts 1M to 5Y itself, so changing the period makes no call.
 
 **Errors**
 
