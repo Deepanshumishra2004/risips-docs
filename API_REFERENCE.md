@@ -1383,7 +1383,10 @@ GET /funds/INF109KC1Q80?period=3Y
 - `fund` has every [Fund summary](#fund-summary) field plus the page fields above.
 - `lumpsum.min` is the first-purchase minimum. Once the user has a folio at that fund house, it is the
   additional-purchase minimum.
-- `chart` is `[time in milliseconds, NAV]` pairs. The last point is the latest NAV.
+- `chart` is `[time in milliseconds, NAV]` pairs, oldest first. The last point is the latest NAV. 1M, 6M and 1Y have a
+  point for every trading day (about 22, 125 and 250); 3Y and 5Y have about one a week (about 156 and 260). The
+  history comes from AMFI's NAVs (via mfapi.in) and is refreshed every 6 hours. If it can't be reached, the chart falls
+  back to the weekly points saved in the catalogue.
 
 **Errors**
 
@@ -1399,7 +1402,7 @@ Compares one or two funds.
 
 | Parameter | In | Required | Rules |
 |---|---|---|---|
-| `isins` | query | Yes | 1 or 2 ISINs, comma-separated |
+| `isins` | query | Yes | 1 or 2 different ISINs, comma-separated |
 
 **Example request**
 
@@ -1424,6 +1427,7 @@ data missing for these funds (`expense_ratio`, `holdings`, `managers`).
 | Status | `reason` | `error` |
 |---|---|---|
 | 400 | `validation` | "You can compare up to 2 funds." |
+| 400 | `validation` | "Pick two different funds to compare." (the same ISIN twice) |
 | 400 | `validation` | "Fund not found" (empty list or a malformed ISIN) |
 | 404 | | "Fund not found" (a well-formed ISIN that is not listed) |
 
