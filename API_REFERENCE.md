@@ -1317,7 +1317,7 @@ category filter. An unknown category returns an empty list.
 
 | Status | `reason` | `error` |
 |---|---|---|
-| 400 | `validation` | "Invalid filter." (a repeated parameter or a value that is too long) |
+| 400 | `validation` | "Invalid filter." (a repeated parameter, a value that is too long, or a `sort` that is not `1M`, `6M`, `1Y`, `3Y` or `5Y`) |
 | 404 | | "Unknown collection" |
 
 ### GET /funds/collections
