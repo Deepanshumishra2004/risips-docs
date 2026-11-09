@@ -1311,7 +1311,8 @@ GET /funds?category=Commodity
 
 `title` is the collection name when `collection` is used, e.g. `"Mid Cap"`. The Commodity collection also includes
 ICICI Pru Multi Asset Allocation Fund (category Hybrid, tagged `commodity`), so it has one more fund than the Commodity
-category filter. An unknown category returns an empty list.
+category filter. The Index Funds collection has every Index-category fund, sector index funds included (Nifty Pharma
+Index), so it matches `category=Index`. An unknown category returns an empty list.
 
 **Errors**
 
