@@ -192,7 +192,7 @@ Returned as `order` for purchases, redemptions and switches.
 | `folio` | string \| null | Filled at allotment |
 | `token_url` | string \| null | Payment link while a purchase is unpaid |
 | `payment` | object | `{ id, status, reference }`. `status`: `PENDING`, `SUCCESS`, `FAILED` |
-| `created_at`, `updated_at`, `succeeded_at`, `traded_on` | string \| null | Times and trade date |
+| `created_at`, `updated_at`, `succeeded_at`, `traded_on` | string \| null | Times (ISO 8601 with their timezone, e.g. `2026-11-09T07:24:00Z`) and trade date |
 | `all_units` | boolean | An all-units redemption or switch |
 | `estimated_amount`, `processed_amount`, `processed_units` | number \| null | Amounts as processed |
 
@@ -206,11 +206,11 @@ Returned as `sip`.
 | `isin`, `fund`, `amount` | | Fund and monthly amount |
 | `state` | string | Plan state, or `awaiting_payment` (first payment not settled) or `failed` (first payment failed) |
 | `status` | string | "Setting up", "Not started", "Activating", "Active", "Awaiting first payment", "Payment received", "Payment failed", "Paused", "Modified", "Cancelled", "Completed", "Failed" |
-| `first_payment_received`, `first_payment_failed` | boolean | First instalment payment state |
+| `first_payment_received`, `first_payment_failed` | boolean | `first_payment_received` is `true` only while the first instalment is paid but not yet allotted ("Payment received"); it goes back to `false` once units are allotted. `paid_count` counts paid instalments |
 | `frequency`, `installment_day`, `start_date` | | Schedule |
-| `next_installment_date` | string \| null | Scheduled date, not adjusted for pauses |
+| `next_installment_date` | string \| null | FP's scheduled date. It ignores pauses and a modified SIP's skipped first months, so it can be earlier than `next_debit` |
 | `next_debit` | string \| null | The next debit that will actually run, adjusted for pauses. `null` when stopped |
-| `next_after_resume` | string \| null | The next debit after a pause ends |
+| `next_after_resume` | string \| null | The next debit if the SIP is resumed now. While paused this can be the first skipped date |
 | `previous_installment_date`, `number_of_installments`, `remaining_installments` | | Schedule |
 | `folio`, `created_at`, `mandate_id` | | |
 | `installments` | array | `[{ id, old_id, state, amount, scheduled_on, traded_on, units, nav, folio, failure_code, upfront }]` |
@@ -241,7 +241,7 @@ Returned as `swp`. The same fields as [STP](#stp) without `isin_to` and `fund_to
 |---|---|
 | `until_stopped` | `true` when it runs until stopped |
 | `withdrawals` | Number of withdrawals |
-| `first_withdrawal`, `next_withdrawal` | Dates |
+| `first_withdrawal`, `next_withdrawal` | The real first / next withdrawal, after `start_offset` skipped months. `start_date` is FP's plan start, which can be earlier |
 
 ### Cart
 
@@ -971,6 +971,7 @@ Every `422` response carries `bank_status`, `code` and `pv_id`.
 | Status | `reason` | `error` |
 |---|---|---|
 | 400 | `validation` | "Account number must be 9–18 digits." / "Enter a valid IFSC." |
+| 400 | | "Please complete the PAN step first." (`next_step: "pan"`): the bank check needs the verified PAN |
 | 400 | | "IFSC not found." |
 | 422 | | "Bank verification is taking longer than usual. Please try again, or use another account." |
 | 422 | | "We could not confirm this account belongs to you. Please use another account in your name." (`code`: `uncertain` or `low_confidence`) |
@@ -1546,7 +1547,7 @@ POST /cart
 |---|---|---|
 | 400 | `validation` | "Choose SIP or one-time." / "Enter an amount." |
 | 400 | | The fund rule, e.g. "Minimum investment in ICICI Pru Flexi Cap fund is ₹500." |
-| 400 | | "Your cart can hold up to 10 funds." |
+| 400 | | "Your cart can hold up to 10 items." (10 lines: one fund as both one-time and SIP is 2 items) |
 | 403 | | [Cannot invest yet](#who-can-invest) |
 | 404 | | "Fund not found" |
 
@@ -1829,6 +1830,7 @@ With `all: true`, `amount` is `null` and `all_units` is `true` until the order i
 | 400 | `validation` | "Folio is required." / "Enter an amount." |
 | 400 | | "Minimum redemption is ₹100." |
 | 400 | | "There are no redeemable units of this fund in this folio right now." |
+| 400 | | "ELSS (tax saver) units are locked for 3 years from purchase, so they can't be redeemed yet. Your first units unlock on DD-MM-YYYY." |
 | 400 | | "You can redeem up to ₹N from this fund right now." |
 | 403 | | [Cannot invest yet](#who-can-invest) |
 | 404 | | "Fund not found" |
@@ -1876,6 +1878,7 @@ The order is `successful` once the switch-out is done. `units_in` fills in when 
 | 400 | | "<target fund> takes switches of at least ₹N." |
 | 400 | | "You hold ₹N, less than the ₹M minimum switch into <target fund>." |
 | 400 | | "There are no redeemable units of this fund in this folio right now." |
+| 400 | | "ELSS (tax saver) units are locked for 3 years from purchase, so they can't be switched yet. Your first units unlock on DD-MM-YYYY." |
 | 400 | | "You can switch up to ₹N from this fund right now." |
 | 403 | | [Cannot invest yet](#who-can-invest) |
 | 404 | | "Fund not found" |
@@ -1885,7 +1888,7 @@ The order is `successful` once the switch-out is done. `units_in` fills in when 
 
 ### GET /orders
 
-Lists purchases, redemptions and switches, newest first.
+Lists purchases, redemptions and switches, newest first. SIP instalments are not listed here: they are in each SIP's `installments` (`GET /sips/{id}`), and the orders report lists them too.
 
 **Auth:** Bearer
 
@@ -1957,11 +1960,11 @@ Returns the investor's holdings and totals.
 | Field | Description |
 |---|---|
 | `summary` | Totals over Risips holdings. `xirr` appears once the first investment is a year old |
-| `holdings` | One line per fund and folio: `isin, folio, fund, units, nav, nav_date, current, invested, redeemable, gain, gain_pct, avg_nav, xirr, day_change, locked, pending, sip, stp, swp`. `locked` is `true` while an all-units redemption or switch runs |
+| `holdings` | One line per fund and folio: `isin, folio, fund, units, nav, nav_date, current, invested, redeemable, gain, gain_pct, avg_nav, xirr, day_change, locked, pending, sip, stp, swp`. `locked` is `true` while an all-units redemption or switch runs. Rupee and % figures are rounded to 2 decimals; `redeemable` is `0` when less than ₹1 can be sold (e.g. locked ELSS units). `units` are as the registrar holds them (3 decimals), so they can differ from an order's 4-decimal units |
 | `in_progress` | Paid orders still being processed. Orders waiting for payment are not listed here |
 | `incoming` | Funds on their way in that are not holdings yet: `{ isin, fund, orders }` |
 | `external` | Imported funds (see [External funds import](#external-funds-import)): `{ status, hidden, source, as_of, imported_at, error, holdings, summary }` |
-| `combined` | Totals over Risips and external holdings. `xirr` is `null` when external funds exist |
+| `combined` | Totals over Risips and external holdings, whether or not they are hidden (`external.hidden` only tells the app to show `summary` instead). `xirr` is `null` when external funds exist |
 
 ---
 
@@ -2043,7 +2046,7 @@ Takes 5-10 seconds (up to 45).
 | `frequency` | string | No | Only `monthly` |
 | `first_now` | boolean | No | `true` makes the first instalment today |
 | `first_pay` | string | No | `upi` pays the first instalment now on a UPI page. Otherwise AutoPay debits it |
-| `installments` | number | No | 1-1200 |
+| `installments` | number | No | 1-1200. Default 120 (10 years), or the fund's minimum number of instalments if that is higher |
 | `otp` | string | Yes | Transaction code |
 
 **Example request**
@@ -2170,7 +2173,7 @@ Ends a pause. Needs a transaction code (`"action": "sip_resume"`).
 ### POST /sips/{id}/modify
 
 Changes the amount or the debit day. A new SIP is created on the same folio and AutoPay, with a new id, and the old SIP
-is stopped. The new SIP does not debit before the old one would have. Needs a transaction code
+is stopped. The new SIP starts in the month the old one would have debited next, so no month is charged twice. Needs a transaction code
 (`"action": "sip_modify"`).
 
 **Auth:** Bearer. Limit: 30 money requests per 10 minutes per user.
@@ -2216,7 +2219,7 @@ Stops a SIP. Needs a transaction code (`"action": "sip_cancel"`).
 
 | Field | Type | Required | Rules |
 |---|---|---|---|
-| `code` | string | No | Reason: `amount_not_available`, `investment_returns_not_as_expected`, `amc_support_not_satisfactory`, `exit_load_not_as_expected`, `switch_to_other_scheme`, `fund_manager_changed`, `investment_goal_complete`, `mandate_not_ready`, `invest_later`, `customer_support_not_satisfactory`. Any other value is saved as `invest_later` |
+| `code` | string | No | Reason: `amount_not_available`, `investment_returns_not_as_expected`, `amc_support_not_satisfactory`, `exit_load_not_as_expected`, `switch_to_other_scheme`, `fund_manager_changed`, `investment_goal_complete`, `mandate_not_ready`, `invest_later`, `customer_support_not_satisfactory`. Any other value is saved as `invest_later`. `cancellation_code` in the response is this code (FP itself stores `custom_reason` whatever it is sent) |
 | `otp` | string | Yes | Transaction code |
 
 **Example request**
@@ -2542,7 +2545,8 @@ Returns the notification list, plus an optional pop-up (`modal`) and `banner`. U
 ```
 
 - Tags: `ORDER`, `SIP`, `KYC`, `ACTION NEEDED`, `SECURITY`, `MARKET`, `REWARDS`.
-- Promotions (`REWARDS`, `MARKET`, the modal and banner) appear only when the `market_insights` setting is on. SIP-due
+- Promotions (`REWARDS`, market news, the promo modal and banner) appear only when the `market_insights` setting is on.
+  The market-holiday notice (`MARKET`, "Market holiday: …") always shows: it changes when orders are processed. SIP-due
   reminders appear only when `sip_reminders` is on.
 - A fresh-KYC investor gets "Your KYC is with the KRA" and later "Your KYC is approved".
 
