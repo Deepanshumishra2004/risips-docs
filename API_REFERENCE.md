@@ -218,6 +218,7 @@ Returned as `sip`.
 | `pause` | object \| null | `{ ids, from, to, skipped, resumes_on }` |
 | `replaces`, `replaced_by` | string \| null | Links between an old SIP and the SIP that replaced it after a change |
 | `cancellation_code` | string \| null | Reason given when stopped |
+| `skip_ignored` | array | Instalments FP created for a date the investor paused (it should not): `[{ id, old_id, scheduled_on, state, amount, skip_id }]`. Normally empty. The investor gets an `ACTION NEEDED` notification and the backend logs it |
 
 ### STP
 
@@ -1366,7 +1367,7 @@ GET /funds/INF109KC1Q80?period=3Y
     "isin": "INF109KC1Q80", "nav": 19.69, "nav_date": "2026-11-02", "risk": "Very High Risk", "category": "Equity",
     "lumpsum": { "allowed": true, "min": 500, "additional_min": 500, "multiples": 1, "max": 999999999 },
     "sip": [ { "frequency": "monthly", "min": 100, "multiples": 1, "installments_min": 6, "dates": [1, "...", 28] } ],
-    "lock_in": "N.A", "exit_load": "1% (<1Yr)", "tax": { "stcg": "20%", "ltcg": "12.5%*" },
+    "lock_in": "None", "exit_load": "1% if redeemed or switched out within 1 month of allotment; nil after (since 6 Apr 2026)", "tax": { "stcg": "20%", "ltcg": "12.5%*" },
     "expense_ratio": { "regular": 1.73, "direct": 0.88, "date": "2026-10-29", "source": "AMFI TER disclosure" },
     "managers": ["Rajat Chandak", "Sharmila D'Silva"],
     "objective": "To generate long-term capital appreciation ...",
@@ -1385,6 +1386,7 @@ GET /funds/INF109KC1Q80?period=3Y
 - `fund` has every [Fund summary](#fund-summary) field plus the page fields above.
 - `lumpsum.min` is the first-purchase minimum. Once the user has a folio at that fund house, it is the
   additional-purchase minimum.
+- `exit_load` and `lock_in` come from the fund house's own documents (SID / KIM / monthly factsheet), checked 2026-11-11; a fund without them says "See the scheme document". `lock_in` is "None" when there is none.
 - `chart` is `[time in milliseconds, NAV]` pairs, oldest first. The last point is the latest NAV. 1M, 6M and 1Y have a
   point for every trading day (about 22, 125 and 250); 3Y and 5Y have about one a week (about 156 and 260). The
   history comes from AMFI's NAVs (via mfapi.in) and is refreshed every 6 hours. If it can't be reached, the chart falls
@@ -1418,12 +1420,12 @@ GET /funds/compare?isins=INF109KC1Q80,INF209K01AJ8
 **Example response** `200`
 
 ```json
-{ "funds": [ { "isin": "INF109KC1Q80", "exit_load": "1% (<1Yr)", "lock_in": "N.A", "min_sip": 100, "...": "..." },
+{ "funds": [ { "isin": "INF109KC1Q80", "exit_load": "1% if redeemed or switched out within 1 month of allotment; nil after (since 6 Apr 2026)", "lock_in": "None", "min_sip": 100, "...": "..." },
              { "isin": "INF209K01AJ8", "...": "..." } ],
   "unavailable": [] }
 ```
 
-Each fund has the [Fund summary](#fund-summary) fields plus `exit_load`, `lock_in`, `min_sip`, `history`,
+Each fund has the [Fund summary](#fund-summary) fields plus `exit_load` and `lock_in` (as on the fund page: from the fund house's documents, or "See the scheme document"), `min_sip`, `history`,
 `fund_house`, `mandate`, `expense_ratio`, `managers`, `objective`, `portfolio`, `pros` and `cons`. `unavailable` lists
 data missing for these funds (`expense_ratio`, `holdings`, `managers`).
 
@@ -1548,6 +1550,8 @@ POST /cart
 | 400 | `validation` | "Choose SIP or one-time." / "Enter an amount." |
 | 400 | | The fund rule, e.g. "Minimum investment in ICICI Pru Flexi Cap fund is ₹500." |
 | 400 | | "Your cart can hold up to 10 items." (10 lines: one fund as both one-time and SIP is 2 items) |
+| 400 | | "Your first <fund house> investment opens your folio with <fund house>. Buy one <fund house> fund now and add the others once it is allotted (usually by the next working day), so all your <fund house> funds are in one folio." (a second line at a fund house where the investor has no folio yet; also shown as that line's `problem`) |
+| 400 | | "Your first investment with <fund house> (<fund>) is still being processed. …" (an order there is waiting for its folio) |
 | 403 | | [Cannot invest yet](#who-can-invest) |
 | 404 | | "Fund not found" |
 
@@ -1789,6 +1793,7 @@ Open `token_url` to pay. It works once.
 | 400 | | "<fund> accepts SIP only. One-time investments are not open for it right now." |
 | 403 | | [Cannot invest yet](#who-can-invest) |
 | 404 | | "Fund not found" |
+| 409 | | "Your first investment with <fund house> (<fund>) is still being processed. Once the fund house allots it, usually by the next working day, you can invest in more <fund house> funds and they will all be in the same folio." (`folio_pending: true`, `pending_order`). One folio per fund house: a folio exists only after the first order is allotted |
 | 422 | | "Order could not be placed. ..." (with `order`) |
 | 503 | | "Order could not be placed. ... Nothing was debited." (with `order`). Try again in a few minutes |
 | 400 / 429 | | [OTP errors](#errors-when-an-action-checks-its-otp) |
@@ -1960,7 +1965,7 @@ Returns the investor's holdings and totals.
 | Field | Description |
 |---|---|
 | `summary` | Totals over Risips holdings. `xirr` appears once the first investment is a year old |
-| `holdings` | One line per fund and folio: `isin, folio, fund, units, nav, nav_date, current, invested, redeemable, gain, gain_pct, avg_nav, xirr, day_change, locked, pending, sip, stp, swp`. `locked` is `true` while an all-units redemption or switch runs. Rupee and % figures are rounded to 2 decimals; `redeemable` is `0` when less than ₹1 can be sold (e.g. locked ELSS units). `units` are as the registrar holds them (3 decimals), so they can differ from an order's 4-decimal units |
+| `holdings` | One line per fund and folio: `isin, folio, fund, units, nav, nav_date, current, invested, redeemable, gain, gain_pct, avg_nav, xirr, day_change, locked, pending, sip, stp, swp`. `locked` is `true` while an all-units redemption or switch runs. Rupee and % figures are rounded to 2 decimals; `redeemable` is `0` when less than ₹1 can be sold (e.g. locked ELSS units). `units` are as the registrar holds them (3 decimals), so they can differ from an order's 4-decimal units. `exit_load`: `{ text, applies, since, message? }` or `null`; `applies` is `true` when units in this folio were bought inside the fund's exit-load period (since `since`), and `message` is the warning the app shows before a redemption or switch |
 | `in_progress` | Paid orders still being processed. Orders waiting for payment are not listed here |
 | `incoming` | Funds on their way in that are not holdings yet: `{ isin, fund, orders }` |
 | `external` | Imported funds (see [External funds import](#external-funds-import)): `{ status, hidden, source, as_of, imported_at, error, holdings, summary }` |
@@ -2077,6 +2082,7 @@ automatically (`status: "Payment failed"`).
 | 400 | `validation` | "Enter an amount." / "Choose a date between 1 and 28." / "Only monthly SIPs are available." / "Choose between 1 and 1,200 instalments." |
 | 400 | | "Minimum SIP for <fund> is ₹N." / "SIP amount must be in multiples of ₹N." / "SIP is not available for <fund> at this frequency." / "Choose a SIP date between 1 and 28." |
 | 403 | | [Cannot invest yet](#who-can-invest) |
+| 409 | | "Your first investment with <fund house> (<fund>) is still being processed. Once the fund house allots it, usually by the next working day, you can invest in more <fund house> funds and they will all be in the same folio." (`folio_pending: true`, `pending_order`). One folio per fund house: a folio exists only after the first order is allotted |
 | 409 | | "Set up AutoPay first." (`need_mandate: true`) |
 | 409 | | "This is above your AutoPay limit of ₹N. Set up a new AutoPay with a higher limit." (`need_mandate: true`, `limit`) |
 | 409 | | "This AutoPay cannot be debited. Please set up AutoPay again." (`need_mandate: true`) |
