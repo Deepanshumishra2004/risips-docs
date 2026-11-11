@@ -242,7 +242,7 @@ Returned as `swp`. The same fields as [STP](#stp) without `isin_to` and `fund_to
 |---|---|
 | `until_stopped` | `true` when it runs until stopped |
 | `withdrawals` | Number of withdrawals |
-| `first_withdrawal`, `next_withdrawal` | The real first / next withdrawal, after `start_offset` skipped months. `start_date` is FP's plan start, which can be earlier |
+| `first_withdrawal`, `next_withdrawal` | The real first / next withdrawal, after `start_offset` skipped months. `start_date` is FP's plan start, which can be earlier. A cancelled, completed or failed plan has `next_withdrawal` and `next_installment_date` `null`, and `first_withdrawal` `null` if it never came due |
 
 ### Cart
 
@@ -1351,7 +1351,7 @@ Returns one fund's full page and its NAV chart.
 | Parameter | In | Required | Rules |
 |---|---|---|---|
 | `isin` | path | Yes | Fund ISIN |
-| `period` | query | No | Chart range: `1M`, `6M`, `1Y` (default), `3Y`, `5Y`, or `all` (the whole chart once, see below). Any other value uses `1Y` |
+| `period` | query | No | Chart range: `1M`, `3M`, `6M`, `1Y` (default), `3Y`, `5Y`, or `all` (the whole chart once, see below). Any other value uses `1Y` |
 
 **Example request**
 
@@ -1365,7 +1365,7 @@ GET /funds/INF109KC1Q80?period=3Y
 {
   "fund": {
     "isin": "INF109KC1Q80", "nav": 19.69, "nav_date": "2026-11-02", "risk": "Very High Risk", "category": "Equity",
-    "lumpsum": { "allowed": true, "min": 500, "additional_min": 500, "multiples": 1, "max": 999999999 },
+    "lumpsum": { "allowed": true, "min": 500, "additional_min": 500, "min_for_you": 500, "multiples": 1, "max": 999999999 },
     "sip": [ { "frequency": "monthly", "min": 100, "multiples": 1, "installments_min": 6, "dates": [1, "...", 28] } ],
     "lock_in": "None", "exit_load": "1% if redeemed or switched out within 1 month of allotment; nil after (since 6 Apr 2026)", "tax": { "stcg": "20%", "ltcg": "12.5%*" },
     "expense_ratio": { "regular": 1.73, "direct": 0.88, "date": "2026-10-29", "source": "AMFI TER disclosure" },
@@ -1373,7 +1373,7 @@ GET /funds/INF109KC1Q80?period=3Y
     "objective": "To generate long-term capital appreciation ...",
     "portfolio": { "as_of": "2026-09-30", "aum_cr": 25141, "count": 77, "mix": { "equity": 97.16, "debt": 0.52, "funds": 0 },
                    "holdings": [ { "name": "TVS Motor Company Ltd.", "industry": "Automobiles", "kind": "equity", "pct": 9.51 } ] },
-    "peers": [ { "name": "ICICI Pru Flexi Cap fund", "r1": -0.91, "r3": 14.03, "r5": 12.53 } ],
+    "peers": [ { "isin": "INF209K01AJ8", "name": "ABSL Flexi Cap Fund", "r1": -0.91, "r3": 14.03, "r5": 12.53 } ],
     "redemption_allowed": true, "switch_in_allowed": true, "switch_out_allowed": true,
     "watchlisted": false, "...": "..."
   },
@@ -1384,11 +1384,13 @@ GET /funds/INF109KC1Q80?period=3Y
 ```
 
 - `fund` has every [Fund summary](#fund-summary) field plus the page fields above.
-- `lumpsum.min` is the first-purchase minimum. Once the user has a folio at that fund house, it is the
-  additional-purchase minimum.
+- `lumpsum.min` is the first-purchase minimum, the same figure as the fund list and compare. `lumpsum.min_for_you` is
+  what this user may invest: the additional-purchase minimum (`additional_min`) once they have a folio at that fund
+  house, otherwise `min`.
+- `peers` lists up to 3 other funds of the same sub-category, each with its `isin`. The fund itself is never in it.
 - `exit_load` and `lock_in` come from the fund house's own documents (SID / KIM / monthly factsheet), checked 2026-11-11; a fund without them says "See the scheme document". `lock_in` is "None" when there is none.
-- `chart` is `[time in milliseconds, NAV]` pairs, oldest first. The last point is the latest NAV. 1M, 6M and 1Y have a
-  point for every trading day (about 22, 125 and 250); 3Y and 5Y have about one a week (about 156 and 260). The
+- `chart` is `[time in milliseconds, NAV]` pairs, oldest first. The last point is the latest NAV. 1M, 3M, 6M and 1Y have a
+  point for every trading day (about 22, 63, 125 and 250); 3Y and 5Y have about one a week (about 156 and 260). The
   history comes from AMFI's NAVs (via mfapi.in) and is refreshed every 6 hours. If it can't be reached, the chart falls
   back to the weekly points saved in the catalogue.
 - `period=all` returns 5 years in one chart: every trading day of the last year and one point a week before it (about
