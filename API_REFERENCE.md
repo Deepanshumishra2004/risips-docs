@@ -2553,9 +2553,9 @@ Returns the notification list, plus an optional pop-up (`modal`) and `banner`. U
 ```
 
 - Tags: `ORDER`, `SIP`, `KYC`, `ACTION NEEDED`, `SECURITY`, `MARKET`, `REWARDS`.
-- Promotions (`REWARDS`, market news, the promo modal and banner) appear only when the `market_insights` setting is on.
-  The market-holiday notice (`MARKET`, "Market holiday: …") always shows: it changes when orders are processed. SIP-due
-  reminders appear only when `sip_reminders` is on.
+- Market insights appear only when the `market_insights` setting is on (off by default): the market-holiday notice
+  (`MARKET`, "Market holiday: …"), promotions (`REWARDS`), announcements, and the `modal` (holiday or promo) and `banner`.
+  With it off, `modal` and `banner` are `null`. SIP-due reminders appear only when `sip_reminders` is on.
 - A fresh-KYC investor gets "Your KYC is with the KRA" and later "Your KYC is approved".
 
 ### POST /notifications/read
