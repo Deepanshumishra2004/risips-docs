@@ -1891,6 +1891,8 @@ The order is `successful` once the switch-out is done. `units_in` fills in when 
 | 400 | | "You can only switch between funds of the same fund house." |
 | 400 | | "<target fund> takes switches of at least ₹N." |
 | 400 | | "You hold ₹N, less than the ₹M minimum switch into <target fund>." |
+| 400 | | "An exit load of up to P% applies to some of your units in this fund and comes out of what reaches <target fund>. Switch at least ₹N so that its ₹M minimum is met." (units still inside the source fund's exit-load period: N = M ÷ (1 − P/100), rounded up) |
+| 400 | | "Your ₹N would be about ₹K after an exit load of up to P%, less than the ₹M minimum switch into <target fund>." (`all: true`, same rule) |
 | 400 | | "There are no redeemable units of this fund in this folio right now." |
 | 400 | | "ELSS (tax saver) units are locked for 3 years from purchase, so they can't be switched yet. Your first units unlock on DD-MM-YYYY." |
 | 400 | | "You can switch up to ₹N from this fund right now." |
