@@ -172,6 +172,7 @@ Returned in fund lists.
 | `swp` | object \| null | `{ frequency, min, multiples, installments_min, dates }` |
 | `switch_in_min` | number \| null | Minimum switch into this fund |
 | `top_performer` | boolean | Top quarter of its category by 3-year return |
+| `purchase_note` | string \| null | "Not taking new investments right now. You can still redeem or switch out." when the fund takes neither lumpsum nor SIP (the fund house has stopped new money, e.g. the gold FoFs); null otherwise |
 | `watchlisted` | boolean | On this user's watchlist |
 
 ### Order
@@ -1800,6 +1801,7 @@ Open `token_url` to pay. It works once.
 | 400 | | "Minimum investment in <fund> is ₹N." |
 | 400 | | "Amount for <fund> must be in multiples of ₹N." |
 | 400 | | "<fund> accepts SIP only. One-time investments are not open for it right now." |
+| 400 | | "<fund> isn't taking new investments right now. You can still redeem or switch out units you hold." (no lumpsum and no SIP: `purchase_note` is set; POST /sips gives the same) |
 | 403 | | [Cannot invest yet](#who-can-invest) |
 | 404 | | "Fund not found" |
 | 409 | | "Your first investment with <fund house> (<fund>) is still being processed. Once the fund house allots it, usually by the next working day, you can invest in more <fund house> funds and they will all be in the same folio." (`folio_pending: true`, `pending_order`). One folio per fund house: a folio exists only after the first order is allotted |
@@ -1999,7 +2001,12 @@ Returns the current AutoPay and the bank account it uses.
   "bank": { "bank_name": "HDFC BANK", "account_masked": "****1195", "ifsc": "HDFC0000240", "branch": "MUMBAI  SANDOZ HOUSE" } }
 ```
 
-`mandate` is a [Mandate](#mandate) when one exists.
+`mandate` is a [Mandate](#mandate) when one exists. An investor can have several mandates on their bank account; this
+shows the one that matters, out of all of them:
+- the **approved** mandate with the highest limit, so a newer one that was rejected or never authorised doesn't hide it;
+- except while the investor is authorising a new mandate with a higher limit (the first 30 minutes after `POST /mandate`):
+  then that one, so the app can wait for its outcome;
+- with none approved, the newest (being set up, rejected, …).
 
 ### POST /mandate
 
@@ -2033,8 +2040,10 @@ POST /mandate
 }
 ```
 
-- An approved AutoPay that covers `need` is reused: `{ "mandate": { ... }, "auth_url": null }`.
-- An AutoPay still `CREATED` with the same `type` is reused with its original limit, and a new `auth_url` is returned.
+- An approved AutoPay that covers `need` is reused: `{ "mandate": { ... }, "auth_url": null }`. Every mandate on the
+  investor's bank account counts, not just the newest: a later one that was rejected or never authorised doesn't stop it.
+- The last AutoPay this app started, if still `CREATED` with the same `type`, is reused with its original limit, and a new
+  `auth_url` is returned.
 - Open `auth_url` to approve it, then poll `GET /mandate` until `status` is `APPROVED`.
 
 **Errors**
@@ -2488,7 +2497,7 @@ Returns a statement.
 | `elss` | ELSS (tax saver) investments |
 | `orders` | Order history |
 | `contract-notes` | Completed orders, each linking to its contract note |
-| `contract-note` | One order's contract note |
+| `contract-note` | One order's contract note (units exactly as allotted, the same figure as the order) |
 | `balance` | Risips balance statement (always empty) |
 | `gst` | GST invoices (always empty) |
 
