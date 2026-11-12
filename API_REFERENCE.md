@@ -128,6 +128,7 @@ Returned as `user` by authentication and onboarding endpoints and by `GET /me`.
 | `address` | Address and gender saved | [POST /onb/address](#post-onbaddress) |
 | `aadhaar` | Fresh KYC only: Aadhaar fetched from DigiLocker | [POST /onb/kyc/start](#post-onbkycstart), [POST /onb/kyc/refresh](#post-onbkycrefresh) |
 | `bank` | Bank account verified | [POST /onb/bank](#post-onbbank) |
+| `selfie-intro` | Older accounts only: selfie saved (PAN without KYC, not on the fresh-KYC path) | POST /onb/selfie |
 | `signature-consent` | FATCA declared (fresh KYC: and signature saved) | [POST /onb/declarations](#post-onbdeclarations), [POST /onb/signature](#post-onbsignature) |
 | `kyc-esign` | Fresh KYC only: KYC form e-signed | [POST /onb/kyc/esign](#post-onbkycesign), [POST /onb/kyc/refresh](#post-onbkycrefresh) |
 | `nominee` | Nominee added or opted out | [POST /onb/nominee](#post-onbnominee) |
@@ -1176,6 +1177,10 @@ POST /onb/kyc/start
 
 `fetch_url` is `null` when the Aadhaar is already fetched.
 
+The form is filled with the onboarding answers, PEP included (`none` → `no_exposure`, `exposed` → `pep`,
+`related` → `related_pep`). If the fund platform fails while filling them, `fetch_url` is still returned and the next
+[POST /onb/kyc/refresh](#post-onbkycrefresh) fills them with the location sent here.
+
 **Errors**
 
 | Status | `reason` | `error` |
@@ -1185,12 +1190,14 @@ POST /onb/kyc/start
 | 409 | | "Your KYC is already on record with the KRA." (not a fresh-KYC account) |
 | 409 | | "Your account is already set up. Contact support to change these details." |
 | 422 | | "Your KYC form expired before it was finished. Please start again." / "A fresh KYC can’t be submitted for this PAN. Please contact support." / "Your KYC form was not accepted (...). Please check your details and start again." (with `kyc_status`) |
-| 502 | | "DigiLocker is not available right now. Please try again." |
+| 422 | | "Your KYC form could not be filled: <reason>. Please check your details." (the fund platform refused an onboarding answer, with `kyc_status`) |
+| 502 | | "DigiLocker is not available right now. Please try again." (the fund platform failed or did not answer) |
 | 503 | | "Your KYC form is still being checked. Please try again in a minute." |
 
 ### POST /onb/kyc/refresh
 
-Re-reads the KYC form after DigiLocker or e-sign. Adds the saved signature if the form still needs it.
+Re-reads the KYC form after DigiLocker or e-sign. Fills any onboarding answer the form still lists in `fields_needed`
+(for example `pep_details`) and adds the saved signature if the form still needs it.
 
 **Auth:** Bearer. No body.
 

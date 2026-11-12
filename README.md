@@ -481,6 +481,7 @@ Every onboarding response returns `user.next_step`. Use this table to pick the n
 | `address` | `POST /onb/address` (optional lookup: `GET /onb/pincode/{pin}`) |
 | `aadhaar` | Fresh KYC only: `POST /onb/kyc/start`, DigiLocker, `POST /onb/kyc/refresh` |
 | `bank` | `POST /onb/bank` (optional lookup: `GET /onb/ifsc/{ifsc}`) |
+| `selfie-intro` | Older accounts only (a PAN without KYC that is not on the fresh-KYC path): `POST /onb/selfie` |
 | `signature-consent` | `POST /onb/declarations` (fresh KYC also `POST /onb/signature`) |
 | `kyc-esign` | Fresh KYC only: `POST /onb/kyc/esign`, e-sign, `POST /onb/kyc/refresh` |
 | `nominee` | `POST /txn/otp` with `"action": "nominee"`, then `POST /onb/nominee` |
@@ -489,6 +490,9 @@ Every onboarding response returns `user.next_step`. Use this table to pick the n
 
 For a PAN with existing KYC the order is: `pan`, `pan-confirm`, `occupation`, `income`, `marital`, `father`, `pep`,
 `address`, `bank`, `signature-consent`, `nominee`, `esign`, `home`.
+
+For a PAN with no KRA record (fresh KYC): `pan`, `pan-confirm`, `occupation`, `income`, `marital`, `father`, `pep`,
+`address`, `aadhaar`, `bank`, `signature-consent`, `kyc-esign`, `nominee`, `esign`, `home`.
 
 **Step 1. PAN, name and date of birth**
 
@@ -736,6 +740,11 @@ POST /onb/kyc/start
 - Without a location: `400` "Allow location access to continue."
 - Outside India: `400` "Your KYC must be done from within India."
 - The KYC form is valid for 7 days (`kyc.expires_at`).
+- The backend fills the form with the onboarding answers (occupation, income, marital status, father's or spouse's
+  name, PEP, gender, email, mobile, location). If the fund platform fails while filling them, `fetch_url` still comes
+  back and the next `POST /onb/kyc/refresh` fills them.
+- Fund platform down or slow: `502` "DigiLocker is not available right now. Please try again."
+- The fund platform refuses an answer: `422` "Your KYC form could not be filled: <reason>. Please check your details."
 
 **Step 6. DigiLocker (browser), then refresh**
 
@@ -763,6 +772,10 @@ POST /onb/kyc/refresh
 
 If `proof_status` is still `"pending"`, call refresh again after a few seconds. If it stays `"pending"` or becomes
 `"failed"`, call `POST /onb/kyc/start` again for a new `fetch_url`.
+
+`kyc.fields_needed` lists what the form still needs. After DigiLocker it should only hold `signature` (sent at the
+signature step). If it still lists an onboarding answer such as `pep_details`, refresh again: each refresh fills
+answers the form is missing.
 
 **Step 7. Bank**
 
