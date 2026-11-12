@@ -1626,6 +1626,7 @@ a transaction code (`"action": "cart"`).
 |---|---|---|---|
 | `item_ids` | string[] | No | Up to 10 cart line ids. Default: the whole cart |
 | `sip_day` | number | When the selection has a SIP line | 1-28, and in the cart's `sip_dates` |
+| `pay_method` | string | No | `upi` (default) or `netbanking`: how every payment of this checkout is made. Error: "Choose UPI or net banking." |
 | `otp` | string | Yes | Transaction code |
 
 **Example request**
@@ -1764,6 +1765,7 @@ Places a one-time purchase and returns its payment link. Takes 5-10 seconds (up 
 |---|---|---|---|
 | `isin` | string | Yes | Fund ISIN. The fund must allow one-time purchases |
 | `amount` | number | Yes | More than 0. At least the fund's minimum, and in its multiples |
+| `pay_method` | string | No | `upi` (default) or `netbanking`: the checkout `token_url` opens for that method. Error: "Choose UPI or net banking." |
 | `otp` | string | Yes | Transaction code |
 
 **Example request**
@@ -2070,7 +2072,7 @@ Takes 5-10 seconds (up to 45).
 | `day` | number | Yes | Debit day, 1-28 |
 | `frequency` | string | No | Only `monthly` |
 | `first_now` | boolean | No | `true` makes the first instalment today |
-| `first_pay` | string | No | `upi` pays the first instalment now on a UPI page. Otherwise AutoPay debits it |
+| `first_pay` | string | No | `upi` or `netbanking` pays the first instalment now on the checkout page (`token_url`). Otherwise AutoPay debits it |
 | `installments` | number | No | 1-1200. Default 120 (10 years), or the fund's minimum number of instalments if that is higher |
 | `otp` | string | Yes | Transaction code |
 
@@ -2092,7 +2094,7 @@ POST /sip
   "return_url_prefix": "https://risips-demo-api.azurewebsites.net/pay/return" }
 ```
 
-`token_url` is present only with `first_now: true` and `first_pay: "upi"`. If that payment fails, the SIP is stopped
+`token_url` is present only with `first_now: true` and `first_pay` `"upi"` or `"netbanking"`. If that payment fails, the SIP is stopped
 automatically (`status: "Payment failed"`).
 
 **Errors**
