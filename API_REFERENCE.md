@@ -193,7 +193,7 @@ Returned as `order` for purchases, redemptions and switches.
 | `failure_code` | string \| null | Why the order failed, e.g. `order_failure_at_gateway` |
 | `folio` | string \| null | Filled at allotment |
 | `token_url` | string \| null | Payment link while a purchase is unpaid |
-| `payment` | object | `{ id, status, reference, method }`. `status`: `PENDING`, `SUCCESS`, `FAILED`. `method`: `UPI` or `NETBANKING` (orders placed from 13 Nov; older ones have none) |
+| `payment` | object | `{ id, status, reference, method }`. `status`: `PENDING`, `SUCCESS`, `FAILED`, or `EXPIRED` (the order failed because the checkout was never paid; a failed order with no payment otherwise shows `FAILED`, never `PENDING`). `method`: `UPI` or `NETBANKING` (orders placed from 13 Nov; older ones have none) |
 | `created_at`, `updated_at`, `succeeded_at`, `traded_on` | string \| null | Times (ISO 8601 with their timezone, e.g. `2026-11-09T07:24:00Z`) and trade date |
 | `all_units` | boolean | An all-units redemption or switch |
 | `estimated_amount`, `processed_amount`, `processed_units` | number \| null | Amounts as processed |
@@ -244,7 +244,8 @@ Returned as `swp`. The same fields as [STP](#stp) without `isin_to` and `fund_to
 |---|---|
 | `until_stopped` | `true` when it runs until stopped |
 | `withdrawals` | Number of withdrawals |
-| `first_withdrawal`, `next_withdrawal` | The real first / next withdrawal, after `start_offset` skipped months. `start_date` is FP's plan start, which can be earlier. A cancelled, completed or failed plan has `next_withdrawal` and `next_installment_date` `null`, and `first_withdrawal` `null` if it never came due |
+| `start_date`, `number_of_installments` | The first withdrawal and the number of withdrawals as the investor chose them (FP's own plan starts earlier and counts the `start_offset` skipped months; not shown) |
+| `first_withdrawal`, `next_withdrawal` | The real first / next withdrawal, after `start_offset` skipped months. A cancelled, completed or failed plan has `next_withdrawal` and `next_installment_date` `null`, and `first_withdrawal` `null` if it never came due |
 
 ### Cart
 
@@ -702,7 +703,10 @@ the code.
 | 400 | `locked` | "Too many wrong attempts. Request a new OTP." |
 | 400 | `expired` | "This OTP has expired. Request a new one." |
 | 400 | `missing` | "This OTP has already been used or expired. Request a new one." |
+| 409 | `missing` | "This OTP was already used for this request, and it did not go through. Request a new OTP to try again." |
 | 429 | `rate_limited` | "Too many wrong codes. Please try again in N minutes." (`retry_after`) |
+
+Sending the same request again with the same OTP within 30 minutes (a client that gave up waiting) answers as the first request did, with the same order or plan and the same checkout link, for lumpsum, redeem, switch, sip, stp and swp. If the first request failed, the retry gets the same error. A retry for an order or plan that has since failed or been cancelled gets 409 "This OTP was already used for this request, and it did not go through. Request a new OTP to try again." (PROD-ORD-003; before 13 Nov the retry got "already been used" while the order went through.)
 
 ---
 

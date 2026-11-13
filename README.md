@@ -1218,7 +1218,8 @@ POST /swp
 ```
 
 - Send `"until": "stopped"` instead of `installments` to run until stopped.
-- `start_offset` is 0, 1 or 2: start this month, or 1 or 2 months later.
+- `start_offset` is 0, 1 or 2: start this month, or 1 or 2 months later. `start_date` and `number_of_installments` in the
+  answer are the first withdrawal and the count you chose.
 
 ```json
 { "swp": { "id": "mfrp_...", "state": "active", "status": "Active", "withdrawals": 3,
