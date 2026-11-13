@@ -2603,6 +2603,11 @@ Returns the notification list, plus an optional pop-up (`modal`) and `banner`. U
   (`MARKET`, "Market holiday: …"), promotions (`REWARDS`), announcements, and the `modal` (holiday or promo) and `banner`.
   With it off, `modal` and `banner` are `null`. SIP-due reminders appear only when `sip_reminders` is on.
 - A fresh-KYC investor gets "Your KYC is with the KRA" and later "Your KYC is approved".
+- Events notified (always on): order placed (a purchase once its payment went through; a withdrawal or switch when
+  placed), order successful / failed, SIP started or updated (once its first payment is made), SIP instalment
+  successful / failed, SIP due in 3 days, SIP paused / resumed, AutoPay active (mandate approved), "Your account is ready"
+  (account opened; a fresh KYC gets "Your KYC is approved" instead), add a nominee, new sign-in, PIN changed. Items cover
+  the last 30 days.
 
 ### POST /notifications/read
 
