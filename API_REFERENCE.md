@@ -159,7 +159,7 @@ Returned in fund lists.
 |---|---|---|
 | `isin` | string | Fund ISIN |
 | `name`, `short_name` | string | Full and short name |
-| `amc`, `amc_short`, `amc_id` | string, string, number | Fund house |
+| `amc`, `amc_short`, `amc_id` | string, string, number | Fund house. One `amc` / `amc_short` per `amc_id` (e.g. 15 = "ICICI Pru") |
 | `category` | string | `Equity`, `Debt`, `Hybrid`, `Index`, `Commodity` or `Solution` |
 | `sub_category` | string | e.g. `Mid Cap Fund` |
 | `risk` | string | Riskometer: `Low Risk`, `Low to Moderate Risk`, `Moderate Risk`, `Moderately High Risk`, `High Risk`, `Very High Risk` |
@@ -216,7 +216,7 @@ Returned as `sip`.
 | `previous_installment_date`, `number_of_installments`, `remaining_installments` | | Schedule |
 | `folio`, `created_at`, `mandate_id` | | |
 | `installments` | array | `[{ id, old_id, state, amount, scheduled_on, traded_on, units, nav, folio, failure_code, upfront }]` |
-| `paid_count`, `invested`, `units`, `current_value`, `gain_pct` | number | Totals so far |
+| `paid_count`, `invested`, `units`, `current_value`, `gain_pct` | number | Totals so far. `units` / `current_value` are the SIP's units still held: units redeemed or switched out of its folio come off (0 → `null` after a full redemption) |
 | `pause` | object \| null | `{ ids, from, to, skipped, resumes_on }` |
 | `replaces`, `replaced_by` | string \| null | Links between an old SIP and the SIP that replaced it after a change |
 | `cancellation_code` | string \| null | Reason given when stopped |
@@ -1396,7 +1396,7 @@ GET /funds/INF109KC1Q80?period=3Y
   what this user may invest: the additional-purchase minimum (`additional_min`) once they have a folio at that fund
   house, otherwise `min`.
 - `peers` lists up to 3 other funds of the same sub-category, each with its `isin`. The fund itself is never in it.
-- `exit_load` and `lock_in` come from the fund house's own documents (SID / KIM / monthly factsheet), checked 2026-11-11; a fund without them says "See the scheme document". `lock_in` is "None" when there is none.
+- `exit_load` and `lock_in` come from the fund house's own documents (SID / KIM / monthly factsheet), checked 2026-11-11; a fund without them says "See the scheme document", except an ELSS (tax saver) fund, which always shows "3 years (ELSS)". `lock_in` is "None" when there is none.
 - `chart` is `[time in milliseconds, NAV]` pairs, oldest first. The last point is the latest NAV. 1M, 3M, 6M and 1Y have a
   point for every trading day (about 22, 63, 125 and 250); 3Y and 5Y have about one a week (about 156 and 260). The
   history comes from AMFI's NAVs (via mfapi.in) and is refreshed every 6 hours. If it can't be reached, the chart falls
@@ -2519,7 +2519,7 @@ Returns a statement.
 
 | `key` | Report |
 |---|---|
-| `capital-gains` | Realised gains, short and long term |
+| `capital-gains` | Realised gains, short and long term. One row per FIFO lot with its order ref; the sale value is what the investor received for that redemption / switch |
 | `holdings` | Holdings by folio |
 | `dividends` | Dividend (IDCW) credits |
 | `elss` | ELSS (tax saver) investments |
@@ -2579,7 +2579,7 @@ Returns the same report as a printable HTML page. The app turns it into a PDF.
 
 ### GET /notifications
 
-Returns the notification list, plus an optional pop-up (`modal`) and `banner`. Up to 50 items.
+Returns the notification list, plus an optional pop-up (`modal`) and `banner`. Up to 50 items. Every `at` is ISO 8601 in UTC (`…Z`).
 
 **Auth:** Bearer
 
@@ -2740,7 +2740,7 @@ Lists signed-in devices. `name` and `os` come from the `x-device-name` and `x-de
 
 ```json
 {
-  "current": { "id": 414, "name": "Postman", "os": "windows", "signed_in_at": "...", "last_active_at": "...", "current": true },
+  "current": { "id": 414, "name": "Postman", "os": "windows", "signed_in_at": "2026-11-12T07:08:00Z", "last_active_at": "2026-11-12T07:15:00Z", "current": true },
   "others": [ { "id": 415, "name": "Pixel 8", "os": "android", "signed_in_at": "...", "last_active_at": "...", "current": false } ]
 }
 ```
