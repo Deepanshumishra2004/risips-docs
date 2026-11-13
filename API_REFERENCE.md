@@ -491,7 +491,14 @@ POST /auth/mobile/verify
 
 ### POST /auth/pin/set
 
-Sets the 4-digit app PIN.
+Sets the 4-digit app PIN. The first PIN needs only a signed-in session. **Replacing** an existing PIN this way (Forgot
+PIN) is allowed only within 15 minutes of an email-OTP sign-in; otherwise use [Change PIN](#post-settingspinchange), which
+asks for the current one. A replaced PIN sends the "Your app PIN was changed" security notice. Errors: 400 "PIN must be 4
+digits.", 403 "To set a new PIN, sign out and sign in again with the OTP sent to your email." (`reason:
+"pin_reset_needs_signin"`).
+
+**Forgot PIN in the app:** the unlock screen and Settings › Change PIN have "Forgot PIN?": it signs out, opens email
+sign-in, and after the OTP shows "Set a new PIN".
 
 **Auth:** Bearer
 
