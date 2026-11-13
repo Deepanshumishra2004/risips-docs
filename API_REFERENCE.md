@@ -193,7 +193,7 @@ Returned as `order` for purchases, redemptions and switches.
 | `failure_code` | string \| null | Why the order failed, e.g. `order_failure_at_gateway` |
 | `folio` | string \| null | Filled at allotment |
 | `token_url` | string \| null | Payment link while a purchase is unpaid |
-| `payment` | object | `{ id, status, reference }`. `status`: `PENDING`, `SUCCESS`, `FAILED` |
+| `payment` | object | `{ id, status, reference, method }`. `status`: `PENDING`, `SUCCESS`, `FAILED`. `method`: `UPI` or `NETBANKING` (orders placed from 13 Nov; older ones have none) |
 | `created_at`, `updated_at`, `succeeded_at`, `traded_on` | string \| null | Times (ISO 8601 with their timezone, e.g. `2026-11-09T07:24:00Z`) and trade date |
 | `all_units` | boolean | An all-units redemption or switch |
 | `estimated_amount`, `processed_amount`, `processed_units` | number \| null | Amounts as processed |
