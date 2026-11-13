@@ -2137,9 +2137,35 @@ Returns one [SIP](#sip).
 |---|---|---|
 | 404 | | "SIP not found" |
 
+### GET /sips/{id}/pause-plan
+
+What a pause would do, before the investor confirms it. Nothing is sent to the fund platform.
+
+**Auth:** Bearer
+
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| `months` | query | Yes | `1` or `2` |
+
+**Example response** `200`
+
+```json
+{ "pause_plan": { "months": 2, "next_debit": "2026-11-14", "still_debited": "2026-11-14",
+  "skipped": ["2026-12-14", "2027-01-14"], "resumes_on": "2027-02-14", "from_date": "2026-12-12", "to_date": "2027-01-14",
+  "message": "Your ₹500.00 instalment on 14 Nov 2026 is less than 2 days away, so it will still be debited. The pause skips 14 Dec 2026 and 14 Jan 2027, and your SIP resumes on 14 Feb 2027." } }
+```
+
+- `still_debited` is the next instalment when it is less than 2 days away (it is debited; the pause starts the month
+  after), otherwise `null`. Show `message` on the pause screen.
+- `from_date` / `to_date` are what the fund platform receives: `from_date` is 2 days before the first skipped
+  instalment (the fund platform refuses a skip whose `from_date` is the instalment date itself).
+- Errors: 409 "Only an active SIP can be paused." / "This SIP is already paused." / "This SIP has no upcoming
+  instalment to pause.", 400 "A SIP can be paused for up to 2 months.", 404 "SIP not found".
+
 ### POST /sips/{id}/pause
 
-Skips the next 1 or 2 monthly instalments. The pause starts at the first instalment at least 2 days away. Needs a
+Skips the next 1 or 2 monthly instalments. The pause starts at the first instalment at least 2 days away (see
+[GET /sips/{id}/pause-plan](#get-sipsidpause-plan), which the response also returns as `pause_plan`). Needs a
 transaction code (`"action": "sip_pause"`).
 
 **Auth:** Bearer. Limit: 30 money requests per 10 minutes per user.
