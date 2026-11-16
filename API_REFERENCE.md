@@ -210,7 +210,7 @@ Returned as `sip`.
 | `status` | string | "Setting up", "Not started", "Activating", "Active", "Awaiting first payment", "Payment received", "Payment failed", "Paused", "Modified", "Cancelled", "Completed", "Failed" |
 | `first_payment_received`, `first_payment_failed` | boolean | `first_payment_received` is `true` only while the first instalment is paid but not yet allotted ("Payment received"); it goes back to `false` once units are allotted. `paid_count` counts paid instalments |
 | `frequency`, `installment_day`, `start_date` | | Schedule |
-| `next_installment_date` | string \| null | FP's scheduled date. It ignores pauses and a modified SIP's skipped first months, so it can be earlier than `next_debit` |
+| `next_installment_date` | string \| null | FP's scheduled date. It ignores pauses and a modified SIP's skipped first months, so it can be earlier than `next_debit`. `null` once the SIP is cancelled, completed or failed |
 | `next_debit` | string \| null | The next debit that will actually run, adjusted for pauses. `null` when stopped |
 | `next_after_resume` | string \| null | The next debit if the SIP is resumed now. While paused this can be the first skipped date |
 | `previous_installment_date`, `number_of_installments`, `remaining_installments` | | Schedule |
@@ -703,6 +703,7 @@ the code.
 | 400 | `locked` | "Too many wrong attempts. Request a new OTP." |
 | 400 | `expired` | "This OTP has expired. Request a new one." |
 | 400 | `missing` | "This OTP has already been used or expired. Request a new one." |
+| 400 | `other_action` | "This OTP was sent for a new SIP. Request an OTP for a one-time investment." (a live OTP of another action; it stays usable for that action) |
 | 409 | `missing` | "This OTP was already used for this request, and it did not go through. Request a new OTP to try again." |
 | 429 | `rate_limited` | "Too many wrong codes. Please try again in N minutes." (`retry_after`) |
 
