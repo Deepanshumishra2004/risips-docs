@@ -654,6 +654,7 @@ Sends a 6-digit transaction code to the registered mobile and email.
 | `stp` | [POST /stp](#post-stp) |
 | `stp_cancel` | [POST /stps/{id}/cancel](#post-stpsidcancel) |
 | `swp` | [POST /swp](#post-swp) |
+| `swp_modify` | [POST /swps/{id}/modify](#post-swpsidmodify) |
 | `swp_cancel` | [POST /swps/{id}/cancel](#post-swpsidcancel) |
 | `nominee` | [POST /onb/nominee](#post-onbnominee), [POST /profile/nominee](#post-profilenominee) |
 | `delete_account` | [POST /settings/deletion](#post-settingsdeletion) |
@@ -2488,6 +2489,50 @@ Returns one [SWP](#swp).
 | Status | `reason` | `error` |
 |---|---|---|
 | 404 | | "SWP not found" |
+
+### POST /swps/{id}/modify
+
+Changes the monthly amount of an active SWP. Needs a transaction code (`"action": "swp_modify"`). The plan keeps its id,
+date and number of withdrawals; the new amount applies from the next withdrawal the fund platform hasn't scheduled yet.
+The withdrawal date can't be changed: the fund platform doesn't allow it. To use another date, stop the SWP and start a
+new one.
+
+**Auth:** Bearer. Limit: 30 money requests per 10 minutes per user.
+
+| Field | Type | Required | Rules |
+|---|---|---|---|
+| `amount` | number | Yes | New monthly amount in rupees. At least the fund's SWP minimum, in its multiples, different from today's amount, and no more than the holding |
+| `day` | number | No | Only the SWP's current date is accepted |
+| `otp` | string | Yes | Transaction code |
+
+**Example request**
+
+```json
+{ "amount": 200, "otp": "123456" }
+```
+
+**Example response** `200`
+
+```json
+{ "swp": { "id": "mfrp_...", "amount": 200, "status": "Active", "...": "..." },
+  "modification": { "id": "mpmi_...", "state": "completed", "from": 100, "to": 200 } }
+```
+
+`modification.state` is `completed`, or `created` while the fund platform is still applying it (the SWP then shows the old
+amount until it's done).
+
+**Errors**
+
+| Status | `reason` | `error` |
+|---|---|---|
+| 400 | | "The withdrawal date of an SWP can’t be changed. To use another date, stop this SWP and start a new one." |
+| 400 | | "Enter a different amount to change this SWP." |
+| 400 | | "Minimum withdrawal is ₹… a month." / "Amount must be in multiples of ₹…" |
+| 400 | | "You hold ₹… in this fund, less than one withdrawal." |
+| 404 | | "SWP not found" |
+| 409 | | "Only an active SWP can be changed." |
+| 422 | | "The fund house did not accept the change: …. Your SWP is unchanged." |
+| 400 / 429 | | [OTP errors](#errors-when-an-action-checks-its-otp) |
 
 ### POST /swps/{id}/cancel
 

@@ -1227,7 +1227,9 @@ POST /swp
 ```
 
 3. `GET /swps` and `GET /swps/{id}` show it.
-4. To stop it: `POST /txn/otp { "action": "swp_cancel" }`, then `POST /swps/{id}/cancel { "otp": "<code>" }`. Returns
+4. To change the monthly amount: `POST /txn/otp { "action": "swp_modify" }`, then
+   `POST /swps/{id}/modify { "amount": 200, "otp": "<code>" }`. The date can't be changed (stop and start a new SWP).
+5. To stop it: `POST /txn/otp { "action": "swp_cancel" }`, then `POST /swps/{id}/cancel { "otp": "<code>" }`. Returns
    `status: "Cancelled"` (it can take a second to show).
 
 ---
